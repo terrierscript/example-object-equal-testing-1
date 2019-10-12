@@ -8,82 +8,90 @@ import React, {
   useRef
 } from "react"
 import { render } from "react-dom"
+import { createSelector } from "reselect"
 
 class Dict {
-  obj: {}
-  constructor() {
-    this.obj = {}
-  }
-  set(obj) {
-    this.obj[JSON.stringify(obj)] = obj
-  }
-  get(obj) {
-    if (!this.obj[JSON.stringify(obj)]) {
-      throw new Error("")
+  cache = {}
+  fetch(obj) {
+    const key = JSON.stringify(obj)
+    if (!this.cache[key]) {
+      this.cache[key] = JSON.parse(key)
     }
-    return this.obj[JSON.stringify(obj)]
+    return this.cache[key]
   }
 }
-const d = new Dict()
-d.set({})
-d.set({ a: 1 })
-console.log(Object.is(d.get({}), d.get({})))
-console.log(Object.is(d.get({ a: 1 }), d.get({ a: 1 })))
+const DictContext = createContext(new Dict())
+const SettingContext = createContext({})
+// const dict = {}
 
-const SettingContext = createContext<Object>({})
-
-// 更新引き起こし装置
 const useIntervalCounter = () => {
   const [_, setCounter] = useState(0)
   useEffect(() => {
     setInterval(() => {
-      // setCounterは関数更新であればdepsに入れなくてOK
       setCounter((cnt) => cnt + 1)
+      console.log("timer")
     }, 1000)
   }, [])
 }
 
-const VerySafeEffectDeps = ({ setting }) => {
-  const serialize = JSON.stringify(setting)
-  useEffect(() => {
-    const deserialize = JSON.parse(serialize)
-    console.log(deserialize)
-  }, [serialize])
-  return <div>foo</div>
+const dict = new Dict()
+
+// あくまでもObjectの同一性なので↓だと内容が変わっていても変更されない（逆に、値が一緒なのに、別なオブジェクトが来れば別物扱い）
+const useUnsafeObjectRef = () => {
+  const setting = useContext(SettingContext)
+  const ref = useRef({})
+  ref.current = setting
+  return ref.current
 }
 
-const Children = () => {
-  useIntervalCounter() // 😺こいつがいると更新される。
-  // useIntervalCounter() // <- 🐶こうだとされない
-  const setting = useContext(SettingContext)
-  const ref = useRef(setting)
-  // useEffect(() => {
-  //   setInterval(() => {
-  //     ref.current = Math.random()
-  //     console.log("foo")
-  //   }, 1000) // ここは毎秒動いてる
-  // }, [])
-  const target = ref.current //
+const useEqualObject = (obj) => {
+  const selector = createSelector(
+    (s) => s,
+    obj
+  )
+  // const obj = useContext(ObjectContex) // If want use context
+  const cache = useRef({})
+  const key = JSON.stringify(obj)
+  if (!cache.current[key]) {
+    cache.current[key] = JSON.parse(key)
+  }
+  return cache.current[key]
+}
+
+const Children = ({ obj }) => {
+  const safed = useEqualObject(obj)
+  const unsafe = useUnsafeObjectRef(obj)
   useEffect(() => {
-    console.log("run", target)
-  }, [target])
+    console.log("safe", obj.v.x)
+  }, [safed])
+  useEffect(() => {
+    console.log("unsafe", obj.v.x)
+  }, [unsafe])
+  return <div>hello</div>
+}
+
+const generateVal = () => {
+  const rand = Math.ceil((Math.random() * 10) % 2)
+  return {
+    v: {
+      x: rand
+    }
+  }
+}
+const App = () => {
+  const [val, setVal] = useState(generateVal())
+  useEffect(() => {
+    setInterval(() => {
+      const v = generateVal()
+      setVal(v)
+      console.log(v)
+    }, 1000)
+  }, [])
+
   return (
     <div>
-      <VerySafeEffectDeps setting={{ foo: "a" }}></VerySafeEffectDeps>
-      hello
+      <Children obj={val}></Children>
     </div>
-  )
-}
-
-const App = () => {
-  const setting = {
-    foo: "baz",
-    bee: {}
-  }
-  return (
-    <SettingContext.Provider value={setting}>
-      <Children></Children>
-    </SettingContext.Provider>
   )
 }
 

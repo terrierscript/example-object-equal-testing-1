@@ -23,6 +23,7 @@
     "react": "^16.10.1",
     "react-dom": "^16.10.1",
     "react-test-renderer": "^16.10.1",
+    "reselect": "^4.0.0",
     "styled-components": "^4.4.0",
     "sutor-tuple": "^1.2.1",
     "typescript": "^3.6.3",
