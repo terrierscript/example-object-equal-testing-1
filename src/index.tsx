@@ -5,7 +5,8 @@ import React, {
   useEffect,
   createContext,
   useState,
-  useRef
+  useRef,
+  useMemo
 } from "react"
 import { render } from "react-dom"
 import { createSelector } from "reselect"
@@ -44,11 +45,14 @@ const useUnsafeObjectRef = () => {
   return ref.current
 }
 
+const useObjectMemo = (obj) => {
+  const key = JSON.stringify(obj)
+  return useMemo(() => {
+    return JSON.parse(key)
+  }, [key])
+}
+
 const useEqualObject = (obj) => {
-  const selector = createSelector(
-    (s) => s,
-    obj
-  )
   // const obj = useContext(ObjectContex) // If want use context
   const cache = useRef({})
   const key = JSON.stringify(obj)
@@ -58,20 +62,49 @@ const useEqualObject = (obj) => {
   return cache.current[key]
 }
 
+const useFoo = () => {
+  const ref = useRef()
+  useEffect(() => {
+    console.log(ref.current)
+  }, [ref.current])
+}
+const useEqualObjectWithMemo = (obj) => {
+  // const obj = useContext(ObjectContex) // If want use context
+  return useMemo(() => obj, [obj])
+}
+
+const selector = createSelector(
+  (s) => s,
+  (s) => s
+)
+// const useEqualObject2 = (obj) => {
+//   return selector(obj)
+// }
+
+// const safed = useEqualObjectWithMemo(obj)
+//   const unsafe = useUnsafeObjectRef(obj)
+//   useEffect(() => {
+//     console.log("safe", obj.v.x)
+//   }, [safed])
+//   useEffect(() => {
+//     console.log("unsafe", obj.v.x)
+//   }, [unsafe])
+
 const Children = ({ obj }) => {
-  const safed = useEqualObject(obj)
-  const unsafe = useUnsafeObjectRef(obj)
+  // const serialize = JSON.stringify(obj)
+  // useEffect(() => {
+  //   const deserialize = JSON.parse(serialize)
+  //   console.log("some obj", deserialize)
+  // }, [serialize])
+  const o = useObjectMemo(obj)
   useEffect(() => {
-    console.log("safe", obj.v.x)
-  }, [safed])
-  useEffect(() => {
-    console.log("unsafe", obj.v.x)
-  }, [unsafe])
+    console.log("a", o.v)
+  }, [o])
   return <div>hello</div>
 }
 
 const generateVal = () => {
-  const rand = Math.ceil((Math.random() * 10) % 2)
+  const rand = Math.ceil((Math.random() * 10) % 3)
   return {
     v: {
       x: rand
@@ -84,7 +117,7 @@ const App = () => {
     setInterval(() => {
       const v = generateVal()
       setVal(v)
-      console.log(v)
+      // console.log(v)
     }, 1000)
   }, [])
 
